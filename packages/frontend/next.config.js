@@ -7,9 +7,10 @@ const nextConfig = {
   compiler: {
     styledComponents: true,
   },
+  output: 'standalone',
   experimental: {
-    typedRoutes: true,
+    typedRoutes: false,
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

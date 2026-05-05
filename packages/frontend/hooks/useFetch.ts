@@ -5,7 +5,7 @@ interface FetchOptions extends RequestInit {
 }
 
 export function useFetch() {
-  const fetch = useCallback(async (url: string, options: FetchOptions = {}) => {
+  const customFetch = useCallback(async (url: string, options: FetchOptions = {}) => {
     const { baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', ...fetchOptions } = options;
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
@@ -17,7 +17,7 @@ export function useFetch() {
     };
 
     try {
-      const response = await fetch(`${baseURL}${url}`, {
+      const response = await globalThis.fetch(`${baseURL}${url}`, {
         ...fetchOptions,
         headers,
       });
@@ -36,5 +36,5 @@ export function useFetch() {
     }
   }, []);
 
-  return { fetch };
+  return { fetch: customFetch };
 }

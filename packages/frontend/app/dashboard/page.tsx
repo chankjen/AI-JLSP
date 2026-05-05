@@ -1,7 +1,8 @@
 'use client';
 
-import { useAuth } from '@/lib/auth-store';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-store';
+import NationalValuesCard from '@/components/NationalValuesCard';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -56,14 +57,18 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="space-y-3">
-            <QuickActionButton href="/dashboard/cases/new" label="File New Case" icon="📝" />
-            <QuickActionButton href="/dashboard/research" label="Legal Research" icon="🔍" />
-            <QuickActionButton href="/dashboard/tdr" label="TDR Objection" icon="📊" />
-            <QuickActionButton href="/dashboard/conveyancing" label="New Conveyance" icon="📑" />
+        {/* National Values & Quick Actions */}
+        <div className="space-y-6">
+          <NationalValuesCard />
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+            <div className="space-y-3">
+              <QuickActionButton href="/dashboard/cases/file-new" label="File New Case" icon="📝" />
+              <QuickActionButton href="/dashboard/research" label="Legal Research" icon="🔍" />
+              <QuickActionButton href="/dashboard/tdr" label="TDR Objection" icon="📊" />
+              <QuickActionButton href="/dashboard/conveyancing" label="New Conveyance" icon="📑" />
+            </div>
           </div>
         </div>
       </div>

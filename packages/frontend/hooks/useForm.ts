@@ -14,8 +14,7 @@ interface UseFormReturn<T> {
 }
 
 export function useForm<T extends Record<string, any>>(
-  initialValues: T,
-  onSubmit?: (values: T) => Promise<void>
+  initialValues: T
 ): UseFormReturn<T> {
   const [values, setValues] = useState<T>(initialValues);
   const [errors, setErrors] = useState<Record<keyof T, string>>({} as Record<keyof T, string>);

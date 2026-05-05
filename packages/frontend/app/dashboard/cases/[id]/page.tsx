@@ -11,6 +11,10 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
     filedDate: '2026-01-15',
     judge: 'Hon. Justice Smith',
     caseNumber: 'JLSP-2026-001234',
+    complexity: 'medium',
+    priority: 'high',
+    assignedDivision: 'Commercial',
+    aiRationale: 'Case assigned to Commercial division based on dispute over contractual valuation methodology. Priority set to high due to imminent statutory deadline and potential revenue impact.',
     parties: [
       { role: 'Claimant', name: 'ABC Corporation Limited' },
       { role: 'Defendant', name: 'XYZ Limited' },
@@ -35,6 +39,40 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
           {caseData.status}
         </span>
+      </div>
+
+      {/* AI Insights & Triage */}
+      <div className="bg-indigo-50 border border-indigo-100 rounded-lg shadow-sm p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-indigo-900 flex items-center">
+            <span className="mr-2">🤖</span> AI Case Insights
+          </h2>
+          <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded uppercase">
+            Transferred to {caseData.assignedDivision} Division
+          </span>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-white p-4 rounded-lg border border-indigo-100">
+            <p className="text-xs text-indigo-600 font-semibold uppercase">Complexity</p>
+            <p className="text-xl font-bold text-gray-900 capitalize">{caseData.complexity}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-indigo-100">
+            <p className="text-xs text-indigo-600 font-semibold uppercase">Priority</p>
+            <p className="text-xl font-bold text-gray-900 capitalize">{caseData.priority}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-indigo-100">
+            <p className="text-xs text-indigo-600 font-semibold uppercase">Division</p>
+            <p className="text-xl font-bold text-gray-900">{caseData.assignedDivision}</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg border border-indigo-100">
+          <p className="text-xs text-indigo-600 font-semibold uppercase mb-2">AI Rationale (Art 47 Transparency)</p>
+          <p className="text-sm text-gray-700 leading-relaxed italic">
+            &quot;{caseData.aiRationale}&quot;
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
