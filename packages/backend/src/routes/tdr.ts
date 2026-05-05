@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
 import { checkPermission } from '../middleware/rbac';
-import { db } from '../db';
+import db from '../db';
 
 const router = Router();
 
@@ -88,27 +88,41 @@ router.post('/', authenticateToken, checkPermission('manage_tdr'), async (req: A
   }
 });
 
+import { validateTDRObjection } from '../services/aiValidationService';
+
 // Validate objection (check TPA Sec 51 compliance)
 router.post('/:id/validate', authenticateToken, checkPermission('validate_objections'), async (req: AuthRequest, res) => {
   try {
-    const tdr = await db.query('SELECT * FROM tax_disputes WHERE id = $1', [req.params.id]);
-    if (tdr.rows.length === 0) {
+    const tdrResult = await db.query('SELECT * FROM tax_disputes WHERE id = $1', [req.params.id]);
+    if (tdrResult.rows.length === 0) {
       return res.status(404).json({ error: 'Tax dispute not found' });
     }
 
-    // Run validation checks
-    const validityScore = 85; // Placeholder: actual validation would check TPA Sec 51 requirements
-    const isValid = validityScore >= 80;
+    const tdr = tdrResult.rows[0];
+
+    // Call AI Validation (TPA Sec 51(3))
+    const validationResults = await validateTDRObjection({
+      objection_grounds: tdr.description || '',
+      taxpayer_type: 'individual', // Mock
+      amount: tdr.amount_disputed
+    });
 
     const updateResult = await db.query(
-      `UPDATE tax_disputes SET status = $1, validity_score = $2 WHERE id = $3 RETURNING *`,
-      [isValid ? 'under_review' : 'invalid', validityScore, req.params.id]
+      `UPDATE tax_disputes 
+       SET status = $1, validity_score = $2, ai_rationale = $3 
+       WHERE id = $4 RETURNING *`,
+      [
+        validationResults.is_valid ? 'under_review' : 'invalid', 
+        validationResults.confidence * 100, 
+        validationResults.rationale,
+        req.params.id
+      ]
     );
 
     return res.status(200).json({
-      message: isValid ? 'Objection is valid' : 'Objection is invalid',
+      message: validationResults.is_valid ? 'Objection is valid' : 'Objection is invalid',
       tdr: updateResult.rows[0],
-      validityScore,
+      validation: validationResults
     });
   } catch (error) {
     console.error('Error validating tax dispute:', error);

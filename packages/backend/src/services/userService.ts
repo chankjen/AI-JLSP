@@ -1,5 +1,5 @@
 import { query } from '../db';
-import { UserRole, User } from '../../../shared/types/rbac';
+import { UserRole, User } from '../../../shared';
 
 export interface UserRecord {
   id: string;

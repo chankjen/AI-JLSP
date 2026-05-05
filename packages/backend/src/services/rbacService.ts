@@ -1,5 +1,5 @@
-import { ROLE_PERMISSIONS } from '../../../shared/constants/roles';
-import { Action, Module, PermissionCheck, UserRole } from '../../../shared/types/rbac';
+import { ROLE_PERMISSIONS } from '../../../shared';
+import { Action, Module, PermissionCheck, UserRole } from '../../../shared';
 
 export function checkPermission(role: UserRole, module: Module, action: Action): PermissionCheck {
   const roleConfig = ROLE_PERMISSIONS[role];

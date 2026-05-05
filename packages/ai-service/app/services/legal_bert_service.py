@@ -7,7 +7,8 @@ import os
 
 class LegalBERTService:
     def __init__(self):
-        self.model = SentenceTransformer('sentence-transformers/legal-bert-base-uncased')
+        model_name = os.getenv("LEGAL_BERT_MODEL", "nlpaueb/legal-bert-base-uncased")
+        self.model = SentenceTransformer(model_name)
         self.qdrant = qdrant_client.QdrantClient(
             host=os.getenv("QDRANT_HOST", "localhost"),
             port=int(os.getenv("QDRANT_PORT", "6333")),

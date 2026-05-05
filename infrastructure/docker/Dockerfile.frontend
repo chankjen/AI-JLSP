@@ -12,11 +12,12 @@ RUN apk add --no-cache python3 make g++
 WORKDIR /app
 
 # Copy package files
-COPY packages/frontend/package*.json ./
-COPY packages/shared/package*.json ./shared/
+COPY packages/frontend/package*.json ./packages/frontend/
+COPY packages/shared/package*.json ./packages/shared/
 
-# Install dependencies with security audit
-RUN npm ci --audit-level=moderate
+# Install dependencies from root for workspace support
+COPY package*.json ./
+RUN npm install --workspace=@ai-jlsp/frontend --audit-level=moderate
 
 # ============================================================================
 # Builder Stage
@@ -26,12 +27,12 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy dependencies from previous stage
+# Copy dependencies and shared source
 COPY --from=dependencies /app/node_modules ./node_modules
-COPY --from=dependencies /app/shared ./shared
+COPY packages/shared ./packages/shared
+COPY packages/frontend ./packages/frontend
 
-# Copy application source
-COPY packages/frontend ./
+WORKDIR /app/packages/frontend
 
 # Build Next.js app
 RUN npm run build
@@ -55,11 +56,11 @@ RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 
 # Copy from builder
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/packages/frontend/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/packages/frontend/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/packages/frontend/.next/static ./packages/frontend/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/packages/frontend/package.json ./
 
 # Switch to non-root user
 USER nextjs

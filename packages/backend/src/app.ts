@@ -6,6 +6,13 @@ import rateLimit from 'express-rate-limit';
 
 import authRoutes from './routes/auth';
 import dashboardRoutes from './routes/dashboard';
+import casesRoutes from './routes/cases';
+import researchRoutes from './routes/research';
+import tdrRoutes from './routes/tdr';
+import conveyancingRoutes from './routes/conveyancing';
+import boardRoutes from './routes/board';
+import complianceRoutes from './routes/compliance';
+import adminRoutes from './routes/admin';
 import { authenticateToken } from './middleware/auth';
 
 const app = express();
@@ -29,6 +36,13 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', authenticateToken, dashboardRoutes);
+app.use('/api/cases', authenticateToken, casesRoutes);
+app.use('/api/research', authenticateToken, researchRoutes);
+app.use('/api/tdr', authenticateToken, tdrRoutes);
+app.use('/api/conveyancing', authenticateToken, conveyancingRoutes);
+app.use('/api/board', authenticateToken, boardRoutes);
+app.use('/api/compliance', authenticateToken, complianceRoutes);
+app.use('/api/admin', authenticateToken, adminRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });

@@ -54,7 +54,7 @@ services:
     networks:
       - ai_jlsp_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: ["CMD-SHELL", "grep -q 18BD /proc/net/tcp || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -120,7 +120,10 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MODEL_PATH: ${MODEL_PATH:-/app/models}
-      LEGAL_BERT_MODEL: ${LEGAL_BERT_MODEL:-sentence-transformers/legal-bert-ke}
+      LEGAL_BERT_MODEL: ${LEGAL_BERT_MODEL:-nlpaueb/legal-bert-base-uncased}
+      TRANSFORMERS_CACHE: /app/cache
+      HF_HOME: /app/cache
+      HOME: /app
     ports:
       - "3002:3002"
     volumes:
@@ -137,8 +140,8 @@ services:
   # Frontend Service (Next.js - RBAC dashboard, multilingual UI)
   frontend:
     build:
-      context: ./packages/frontend
-      dockerfile: ../../infrastructure/docker/Dockerfile.frontend
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.frontend
     container_name: ai_jlsp_frontend
     depends_on:
       backend:

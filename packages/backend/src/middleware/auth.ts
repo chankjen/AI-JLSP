@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { AuthService } from '../services/authService';
-import { JWTPayload } from '../../../shared/types/rbac';
+import { JWTPayload } from '../../../shared';
 
 const authService = new AuthService();
 

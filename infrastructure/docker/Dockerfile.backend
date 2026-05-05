@@ -12,11 +12,12 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++ curl
 
 # Copy package files
-COPY packages/backend/package*.json ./
-COPY packages/shared/package*.json ./shared/
+COPY packages/backend/package*.json ./packages/backend/
+COPY packages/shared/package*.json ./packages/shared/
 
-# Install dependencies with security audit
-RUN npm ci --audit-level=moderate
+# Install dependencies from root for workspace support
+COPY package*.json ./
+RUN npm install --workspace=@ai-jlsp/backend --audit-level=moderate
 
 # ============================================================================
 # Builder Stage
@@ -26,12 +27,12 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy dependencies from dependencies stage
+# Copy dependencies and shared source
 COPY --from=dependencies /app/node_modules ./node_modules
-COPY --from=dependencies /app/shared ./shared
+COPY packages/shared ./packages/shared
+COPY packages/backend ./packages/backend
 
-# Copy application source
-COPY packages/backend ./
+WORKDIR /app/packages/backend
 
 # Run TypeScript compilation
 RUN npm run build
@@ -56,9 +57,9 @@ RUN adduser -S backend -u 1001
 
 # Copy from builder stages
 COPY --from=dependencies /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/shared ./shared
+COPY --from=builder /app/packages/backend/dist ./dist
+COPY --from=builder /app/packages/backend/package*.json ./
+COPY --from=builder /app/packages/shared ./packages/shared
 
 # Create logs directory
 RUN mkdir -p /app/logs && chown -R backend:nodejs /app
@@ -81,4 +82,4 @@ ENV NODE_OPTIONS="--max-old-space-size=512"
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start Express server
-CMD ["node", "dist/app.js"]
+CMD ["node", "dist/backend/src/app.js"]

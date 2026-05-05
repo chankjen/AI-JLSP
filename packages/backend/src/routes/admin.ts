@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
 import { checkPermission } from '../middleware/rbac';
-import { db } from '../db';
+import db from '../db';
 
 const router = Router();
 

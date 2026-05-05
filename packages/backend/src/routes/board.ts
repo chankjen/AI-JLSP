@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
 import { checkPermission } from '../middleware/rbac';
-import { db } from '../db';
+import db from '../db';
 
 const router = Router();
 
@@ -88,30 +88,37 @@ router.post('/meetings', authenticateToken, checkPermission('manage_board'), asy
   }
 });
 
+import { generateBoardAgenda, extractMeetingMinutes } from '../services/aiValidationService';
+
 // Generate agenda
 router.post('/meetings/:id/generate-agenda', authenticateToken, checkPermission('manage_board'), async (req: AuthRequest, res) => {
   try {
     const { agenda } = req.body;
 
-    if (!agenda) {
-      return res.status(400).json({ error: 'Agenda is required' });
+    if (!agenda || !Array.isArray(agenda)) {
+      return res.status(400).json({ error: 'Agenda items are required as an array' });
     }
 
-    // AI would prioritize items here based on urgency, strategic alignment, risk
-    const prioritizedAgenda = [
-      { priority: 1, item: agenda[0] || 'Item 1' },
-      { priority: 2, item: agenda[1] || 'Item 2' },
-      { priority: 3, item: agenda[2] || 'Item 3' },
-    ];
+    const meetingResult = await db.query('SELECT title FROM board_meetings WHERE id = $1', [req.params.id]);
+    if (meetingResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Meeting not found' });
+    }
+
+    // AI Prioritization (Good Governance)
+    const aiResults = await generateBoardAgenda({
+      title: meetingResult.rows[0].title,
+      current_agenda: agenda
+    });
 
     const result = await db.query(
-      `UPDATE board_meetings SET agenda = $1 WHERE id = $2 RETURNING *`,
-      [JSON.stringify(prioritizedAgenda), req.params.id]
+      `UPDATE board_meetings SET agenda = $1, ai_rationale = $2 WHERE id = $3 RETURNING *`,
+      [JSON.stringify(aiResults.prioritized_agenda), aiResults.rationale, req.params.id]
     );
 
     return res.status(200).json({
-      message: 'Agenda generated successfully',
-      agenda: prioritizedAgenda,
+      message: 'Agenda generated and prioritized by AI',
+      agenda: aiResults.prioritized_agenda,
+      rationale: aiResults.rationale,
       meeting: result.rows[0],
     });
   } catch (error) {
@@ -139,6 +146,42 @@ router.post('/meetings/:id/documents', authenticateToken, checkPermission('manag
   } catch (error) {
     console.error('Error uploading document:', error);
     return res.status(500).json({ error: 'Unable to upload document' });
+  }
+});
+
+
+// Extract minutes
+router.post('/meetings/:id/extract-minutes', authenticateToken, checkPermission('manage_board'), async (req: AuthRequest, res) => {
+  try {
+    const { meetingNotes } = req.body;
+
+    if (!meetingNotes) {
+      return res.status(400).json({ error: 'Meeting notes are required' });
+    }
+
+    // Call AI Minute Extractor (Accountability & Good Governance)
+    const extractionResults = await extractMeetingMinutes(meetingNotes);
+
+    const result = await db.query(
+      `UPDATE board_meetings SET summary = $1, action_items = $2, ai_rationale = $3 WHERE id = $4 RETURNING *`,
+      [
+        extractionResults.summary, 
+        JSON.stringify(extractionResults.action_items), 
+        extractionResults.rationale, 
+        req.params.id
+      ]
+    );
+
+    return res.status(200).json({
+      message: 'Minutes extracted and summarized by AI',
+      summary: extractionResults.summary,
+      actionItems: extractionResults.action_items,
+      rationale: extractionResults.rationale,
+      meeting: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Error extracting minutes:', error);
+    return res.status(500).json({ error: 'Unable to extract minutes' });
   }
 });
 

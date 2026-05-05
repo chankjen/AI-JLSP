@@ -1,10 +1,10 @@
-import jwt from 'jsonwebtoken';
 import { compare, hash } from 'bcryptjs';
 import { findUserByEmail, findUserById, UserRecord } from './userService';
-import { AuthToken, JWTPayload, UserRole } from '../../../shared/types/rbac';
+import { AuthToken, JWTPayload, UserRole } from '../../../shared';
+import { sign, verify, Secret, Algorithm, SignOptions, VerifyOptions } from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-me';
-const JWT_ALGORITHM = process.env.JWT_ALGORITHM || 'HS256';
+const JWT_SECRET: Secret = process.env.JWT_SECRET || 'change-me';
+const JWT_ALGORITHM: Algorithm = (process.env.JWT_ALGORITHM || 'HS256') as Algorithm;
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '86400';
 const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '604800';
 
@@ -38,18 +38,18 @@ export class AuthService {
       mfaVerified: !user.mfa_enabled
     };
 
-    const accessToken = jwt.sign(payload, JWT_SECRET, {
+    const accessToken = sign(payload, JWT_SECRET, {
       algorithm: JWT_ALGORITHM,
       expiresIn: parseInt(JWT_EXPIRY, 10)
-    });
+    } as SignOptions);
 
-    const refreshToken = jwt.sign(
+    const refreshToken = sign(
       { sub: user.id, token_type: 'refresh' },
       JWT_SECRET,
       {
         algorithm: JWT_ALGORITHM,
         expiresIn: parseInt(JWT_REFRESH_EXPIRY, 10)
-      }
+      } as SignOptions
     );
 
     return {
@@ -61,16 +61,16 @@ export class AuthService {
   }
 
   verifyToken(token: string): JWTPayload {
-    const payload = jwt.verify(token, JWT_SECRET, {
+    const payload = verify(token, JWT_SECRET, {
       algorithms: [JWT_ALGORITHM]
-    }) as JWTPayload;
+    } as VerifyOptions) as unknown as JWTPayload;
     return payload;
   }
 
   verifyRefreshToken(token: string): string {
-    const payload = jwt.verify(token, JWT_SECRET, {
+    const payload = verify(token, JWT_SECRET, {
       algorithms: [JWT_ALGORITHM]
-    }) as { sub: string; token_type?: string };
+    } as VerifyOptions) as unknown as { sub: string; token_type?: string };
     if (payload.token_type !== 'refresh') {
       throw new Error('Invalid refresh token');
     }

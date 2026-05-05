@@ -19,4 +19,5 @@ export async function query(text: string, params?: unknown[]) {
   return pool.query(text, params);
 }
 
+export const db = pool;
 export default pool;

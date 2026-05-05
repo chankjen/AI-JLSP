@@ -306,7 +306,7 @@ CREATE TABLE IF NOT EXISTS dpa_consent_records (
 
 CREATE INDEX idx_consent_user_id ON dpa_consent_records(user_id, consent_type);
 CREATE INDEX idx_consent_active ON dpa_consent_records(user_id, withdrawn_at) WHERE withdrawn_at IS NULL;
-CREATE INDEX idx_consent_expiry ON dpa_consent_records(consent_expiry) WHERE consent_expiry > CURRENT_TIMESTAMP;
+CREATE INDEX idx_consent_expiry ON dpa_consent_records(consent_expiry);
 
 -- ============================================================================
 -- 4. DPIA (Data Protection Impact Assessment) TABLE (DPA Sec 35)

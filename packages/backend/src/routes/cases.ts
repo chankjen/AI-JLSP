@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
 import { checkPermission } from '../middleware/rbac';
-import { db } from '../db';
+import db from '../db';
+import { triageCase, suggestHearingDate, analyzeADRSuitability } from '../services/aiValidationService';
 
 const router = Router();
 
@@ -65,6 +66,7 @@ router.get('/:id', authenticateToken, checkPermission('view_cases'), async (req:
   }
 });
 
+
 // File new case
 router.post('/', authenticateToken, checkPermission('file_case'), async (req: AuthRequest, res) => {
   try {
@@ -76,18 +78,34 @@ router.post('/', authenticateToken, checkPermission('file_case'), async (req: Au
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Call AI Triage (Art 47 transparency)
+    const triageResults = await triageCase({
+      title: caseTitle,
+      description: description || '',
+      case_type: caseType
+    });
+
     const caseNumber = `JLSP-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000000)}`;
 
     const result = await db.query(
-      `INSERT INTO cases (case_number, title, case_type, parties, jurisdiction, description, status, filed_by, filed_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-       RETURNING id, case_number, title, status, filed_date`,
-      [caseNumber, caseTitle, caseType, parties, jurisdiction, description, 'pending_validation', req.user.sub]
+      `INSERT INTO cases (
+        case_number, title, case_type, parties, jurisdiction, description, 
+        status, filed_by, filed_date, 
+        complexity, priority, assigned_division, ai_rationale
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9, $10, $11, $12)
+       RETURNING id, case_number, title, status, filed_date, assigned_division`,
+      [
+        caseNumber, caseTitle, caseType, parties, jurisdiction, description, 
+        'pending_validation', req.user.sub,
+        triageResults.complexity, triageResults.priority, triageResults.assigned_division, triageResults.rationale
+      ]
     );
 
     return res.status(201).json({
-      message: 'Case filed successfully',
+      message: 'Case filed successfully with AI triage',
       case: result.rows[0],
+      triage: triageResults
     });
   } catch (error) {
     console.error('Error filing case:', error);
@@ -131,6 +149,62 @@ router.get('/:id/documents', authenticateToken, checkPermission('view_cases'), a
   } catch (error) {
     console.error('Error fetching documents:', error);
     return res.status(500).json({ error: 'Unable to fetch documents' });
+  }
+});
+
+
+// Suggest hearing date
+router.post('/:id/suggest-schedule', authenticateToken, checkPermission('manage_cases'), async (req: AuthRequest, res) => {
+  try {
+    const caseResult = await db.query('SELECT case_type, filed_date FROM cases WHERE id = $1', [req.params.id]);
+    if (caseResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Case not found' });
+    }
+
+    const { case_type, filed_date } = caseResult.rows[0];
+
+    // Call AI Scheduler (Art 47 & Rule of Law)
+    const schedulingResults = await suggestHearingDate({
+      case_type,
+      filed_date: filed_date.toISOString(),
+      statutory_deadline_days: case_type === 'tax' ? 60 : 120
+    });
+
+    return res.status(200).json({
+      message: 'Optimal hearing dates suggested by AI',
+      scheduling: schedulingResults
+    });
+  } catch (error) {
+    console.error('Error suggesting schedule:', error);
+    return res.status(500).json({ error: 'Unable to suggest schedule' });
+  }
+});
+
+
+// Analyze ADR suitability
+router.get('/:id/adr-suitability', authenticateToken, checkPermission('view_cases'), async (req: AuthRequest, res) => {
+  try {
+    const caseResult = await db.query('SELECT title, description FROM cases WHERE id = $1', [req.params.id]);
+    if (caseResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Case not found' });
+    }
+
+    const { title, description } = caseResult.rows[0];
+
+    // Call AI ADR Analyzer (Efficiency & Access to Justice)
+    const adrResults = await analyzeADRSuitability({
+      title,
+      description: description || '',
+      amount: 0 // Mock amount for now
+    });
+
+    return res.status(200).json({
+      message: 'ADR suitability assessment complete',
+      adr: adrResults
+    });
+  } catch (error) {
+    console.error('Error analyzing ADR suitability:', error);
+    return res.status(500).json({ error: 'Unable to analyze ADR suitability' });
   }
 });
 

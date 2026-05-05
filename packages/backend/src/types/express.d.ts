@@ -1,4 +1,4 @@
-import { JWTPayload } from '../../../shared/types/rbac';
+import { JWTPayload } from '../../../shared';
 
 declare global {
   namespace Express {
