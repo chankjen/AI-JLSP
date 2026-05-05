@@ -96,8 +96,8 @@ export interface JWTPayload {
   sub: string; // user ID
   email: string;
   role: UserRole;
-  iat: number;
-  exp: number;
+  iat?: number;
+  exp?: number;
   mfaVerified: boolean;
   consentTokens?: string[]; // For DPA tracking
 }

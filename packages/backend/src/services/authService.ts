@@ -28,13 +28,10 @@ export class AuthService {
   }
 
   async generateTokens(user: UserRecord): Promise<AuthToken> {
-    const now = Math.floor(Date.now() / 1000);
     const payload: JWTPayload = {
       sub: user.id,
       email: user.email,
       role: user.role as UserRole,
-      iat: now,
-      exp: now + parseInt(JWT_EXPIRY, 10),
       mfaVerified: !user.mfa_enabled
     };
 

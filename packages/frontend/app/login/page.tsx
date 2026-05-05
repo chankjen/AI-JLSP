@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Cookies from 'js-cookie';
 import { useAuth } from '@/lib/auth-store';
 import apiClient from '@/lib/api-client';
 
@@ -25,10 +26,11 @@ export default function LoginPage() {
         password,
       });
 
-      const { token, user } = response.data;
+      const { tokens, user } = response.data;
       
-      // Store in localStorage
-      localStorage.setItem('authToken', token);
+      // Store token in cookie (for api-client interceptor) AND localStorage
+      Cookies.set('auth_token', tokens.accessToken, { expires: 1 });
+      localStorage.setItem('authToken', tokens.accessToken);
       localStorage.setItem('user', JSON.stringify(user));
       
       // Redirect to dashboard

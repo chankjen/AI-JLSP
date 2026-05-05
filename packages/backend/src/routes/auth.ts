@@ -29,6 +29,7 @@ router.post('/login', async (req, res) => {
     const profile = await getUserProfile(user.id);
     return res.status(200).json({ user: profile, tokens });
   } catch (error) {
+    console.error('Login Error:', error);
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 });

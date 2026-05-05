@@ -73,11 +73,11 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: ${BACKEND_PORT:-3001}
-      DB_HOST: postgres
-      DB_NAME: ${DB_NAME:-ai_jlsp}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_PORT: 5432
+      PGHOST: postgres
+      PGDATABASE: ${DB_NAME:-ai_jlsp}
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASSWORD:-postgres}
+      PGPORT: 5432
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-prod}
