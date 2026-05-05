@@ -1,0 +1,176 @@
+version: '3.9'
+
+services:
+  # PostgreSQL 15 (RBAC, audit logs, DPA-compliant schema)
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai_jlsp_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ai_jlsp}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/init-scripts/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ai_jlsp_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 7 (Sessions, DPA consent cache, rate limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: ai_jlsp_redis
+    command: redis-server /usr/local/etc/redis/redis.conf --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./infrastructure/init-scripts/redis-init.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - ai_jlsp_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Qdrant Vector DB (Legal-BERT-KE embeddings, semantic search)
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ai_jlsp_qdrant
+    environment:
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-qdrant_dev_key}
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - ai_jlsp_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # Backend Service (Node.js/Express - CRUD, Auth, RBAC)
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.backend
+    container_name: ai_jlsp_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${BACKEND_PORT:-3001}
+      DB_HOST: postgres
+      DB_NAME: ${DB_NAME:-ai_jlsp}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-prod}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRY: ${JWT_EXPIRY:-86400}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-key-change-in-prod}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:3001}
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai-service:3002}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./packages/backend/src:/app/src
+    networks:
+      - ai_jlsp_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # AI Service (FastAPI - Legal-BERT-KE RAG, document validation)
+  ai-service:
+    build:
+      context: ./packages/ai-service
+      dockerfile: ../../infrastructure/docker/Dockerfile.ai-service
+    container_name: ai_jlsp_ai_service
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: 1
+      PORT: 3002
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-qdrant_dev_key}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MODEL_PATH: ${MODEL_PATH:-/app/models}
+      LEGAL_BERT_MODEL: ${LEGAL_BERT_MODEL:-sentence-transformers/legal-bert-ke}
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./packages/ai-service:/app
+      - ai_models_cache:/app/models
+    networks:
+      - ai_jlsp_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+
+  # Frontend Service (Next.js - RBAC dashboard, multilingual UI)
+  frontend:
+    build:
+      context: ./packages/frontend
+      dockerfile: ../../infrastructure/docker/Dockerfile.frontend
+    container_name: ai_jlsp_frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
+      NEXT_PUBLIC_AI_SERVICE_URL: ${NEXT_PUBLIC_AI_SERVICE_URL:-http://localhost:3002}
+      NEXT_PUBLIC_LOCALE: ${NEXT_PUBLIC_LOCALE:-en}
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./packages/frontend/.next:/app/.next
+    networks:
+      - ai_jlsp_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  qdrant_data:
+    driver: local
+  ai_models_cache:
+    driver: local
+
+networks:
+  ai_jlsp_network:
+    driver: bridge
+

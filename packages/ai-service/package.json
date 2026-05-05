@@ -1,0 +1,16 @@
+{
+  "name": "@ai-jlsp/ai-service",
+  "version": "1.0.0",
+  "description": "AI-JLSP FastAPI AI Service - Legal-BERT-KE RAG, Document Validation",
+  "main": "app/main.py",
+  "type": "module",
+  "scripts": {
+    "dev": "python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 3002",
+    "start": "python -m uvicorn app.main:app --host 0.0.0.0 --port 3002 --workers 2",
+    "test": "pytest",
+    "lint": "flake8 app && mypy app",
+    "format": "black app && isort app"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

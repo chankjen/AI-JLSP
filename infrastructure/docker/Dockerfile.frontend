@@ -1,0 +1,82 @@
+# ============================================================================
+# Dockerfile for Next.js Frontend - AI-JLSP
+# Multi-stage build: dependencies → builder → runtime
+# COMPLIANCE: WCAG 2.1 AA, TLS 1.3, OWASP ASVS L2
+# ============================================================================
+
+FROM node:18-alpine AS dependencies
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+WORKDIR /app
+
+# Copy package files
+COPY packages/frontend/package*.json ./
+COPY packages/shared/package*.json ./shared/
+
+# Install dependencies with security audit
+RUN npm ci --audit-level=moderate
+
+# ============================================================================
+# Builder Stage
+# ============================================================================
+
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependencies from previous stage
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/shared ./shared
+
+# Copy application source
+COPY packages/frontend ./
+
+# Build Next.js app
+RUN npm run build
+
+# ============================================================================
+# Runtime Stage (Minimal)
+# ============================================================================
+
+FROM node:18-alpine
+
+LABEL maintainer="Legal Technology & Product Engineering Division"
+LABEL description="AI-JLSP Frontend - Next.js 14 with RBAC, JWT Auth, WCAG 2.1 AA"
+
+WORKDIR /app
+
+# Install dumb-init to handle signals properly
+RUN apk add --no-cache dumb-init curl
+
+# Create non-root user (DPA Sec 26: Security principle)
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+# Copy from builder
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
+
+# Switch to non-root user
+USER nextjs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3000 || exit 1
+
+# Set environment (DPA Sec 26: Security)
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Expose port
+EXPOSE 3000
+
+# Use dumb-init to properly handle signals
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start Next.js app
+CMD ["node", "server.js"]

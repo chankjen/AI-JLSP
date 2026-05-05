@@ -1,0 +1,40 @@
+{
+  "name": "ai-jlsp",
+  "version": "1.0.0",
+  "description": "AI-Enhanced Judicial & Legal Services Platform (AI-JLSP) - Kenya Judiciary & KRA",
+  "private": true,
+  "author": "Legal Technology & Product Engineering Division",
+  "license": "MIT",
+  "scripts": {
+    "dev": "docker-compose -f docker-compose.yml up -d && npm --prefix packages/frontend run dev",
+    "dev:all": "docker-compose -f docker-compose.yml up",
+    "build": "npm --prefix packages/frontend run build && npm --prefix packages/backend run build",
+    "start": "docker-compose -f docker-compose.yml up",
+    "stop": "docker-compose -f docker-compose.yml down",
+    "logs": "docker-compose -f docker-compose.yml logs -f",
+    "db:init": "bash scripts/init-db.sh",
+    "db:seed": "bash scripts/seed-roles.sh",
+    "keys:generate": "bash scripts/generate-keys.sh",
+    "lint": "npm --prefix packages/frontend run lint && npm --prefix packages/backend run lint",
+    "test": "npm --prefix packages/frontend run test && npm --prefix packages/backend run test"
+  },
+  "workspaces": [
+    "packages/frontend",
+    "packages/backend",
+    "packages/ai-service",
+    "packages/shared"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "judiciary",
+    "legal-tech",
+    "ai",
+    "kenya",
+    "kra",
+    "dpa-compliant",
+    "constitution-aligned"
+  ]
+}
