@@ -1,4 +1,3 @@
-version: '3.9'
 
 services:
   # PostgreSQL 15 (RBAC, audit logs, DPA-compliant schema)

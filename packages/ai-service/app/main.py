@@ -1,15 +1,29 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 import os
 from .services.legal_bert_service import LegalBERTService
+from .services.triage_service import TriageService
+from .services.legal_research_service import LegalResearchService
+from .services.document_automation_service import DocumentAutomationService
+from .services.tdr_service import TDRService
 from .services.civil_procedure_checklist import CivilProcedureChecklist
+from .services.litigation_service import LitigationService
+from .services.portal_service import PortalService
+from .services.ingestion_service import IngestionService
 
 app = FastAPI(title="AI-JLSP AI Service", version="1.0.0")
 
 # Initialize services
 legal_bert = LegalBERTService()
 civil_procedure = CivilProcedureChecklist()
+triage_service = TriageService()
+legal_research = LegalResearchService()
+document_automation = DocumentAutomationService()
+tdr_service = TDRService()
+litigation_service = LitigationService()
+portal_service = PortalService()
+ingestion_service = IngestionService()
 
 class DocumentValidationRequest(BaseModel):
     document_text: str
@@ -47,6 +61,7 @@ class TriageResponse(BaseModel):
     assigned_division: str
     rationale: str
     confidence: float
+    entities_extracted: Optional[Dict[str, Any]] = None
 
 class TDRValidationRequest(BaseModel):
     objection_grounds: str
@@ -103,48 +118,63 @@ async def validate_checklist(request: ChecklistValidationRequest):
 
 @app.post("/api/triage", response_model=TriageResponse)
 async def triage_case(request: TriageRequest):
-    # Mock triage logic focusing on explainability
-    complexity = "medium"
-    priority = "medium"
-    division = "Civil"
-    
-    if "tax" in request.title.lower() or "revenue" in request.title.lower():
-        division = "Tax"
-    elif "land" in request.title.lower() or "property" in request.title.lower():
-        division = "Conveyancing"
-    
-    if "urgent" in request.description.lower() or "injunction" in request.description.lower():
-        priority = "high"
+    try:
+        result = triage_service.classify_and_route(
+            title=request.title,
+            description=request.description,
+            case_type=request.case_type
+        )
+        return TriageResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Triage failed: {str(e)}")
 
-    return TriageResponse(
-        complexity=complexity,
-        priority=priority,
-        assigned_division=division,
-        rationale=f"Case assigned to {division} division based on keyword matching ('{division.lower()}'). Priority set to {priority} due to urgency keywords.",
-        confidence=0.85
-    )
+class DocumentSuggestionRequest(BaseModel):
+    draft_text: str
+    document_type: str
+
+class DocumentSuggestionResponse(BaseModel):
+    suggestions: list
+
+@app.post("/api/document/suggest-clauses", response_model=DocumentSuggestionResponse)
+async def suggest_clauses(request: DocumentSuggestionRequest):
+    suggestions = document_automation.suggest_clauses(request.draft_text, request.document_type)
+    return DocumentSuggestionResponse(suggestions=suggestions)
+
+class CompliancePreCheckRequest(BaseModel):
+    draft_text: str
+    document_type: str
+
+class CompliancePreCheckResponse(BaseModel):
+    is_compliant: bool
+    issues: list
+    validation_timestamp: str
+
+@app.post("/api/document/compliance-check", response_model=CompliancePreCheckResponse)
+async def compliance_check(request: CompliancePreCheckRequest):
+    result = document_automation.compliance_pre_check(request.draft_text, request.document_type)
+    return CompliancePreCheckResponse(**result)
 
 @app.post("/api/validate/tdr-objection", response_model=TDRValidationResponse)
 async def validate_tdr_objection(request: TDRValidationRequest):
-    # Mock TDR validation per Sec 51(3) TPA
-    is_valid = len(request.objection_grounds) > 50
-    
-    return TDRValidationResponse(
-        is_valid=is_valid,
-        requirements_met=["Grounds of objection stated"],
-        missing_requirements=[] if is_valid else ["Detailed grounds of objection required per Sec 51(3) TPA"],
-        rationale="Validation performed against Tax Procedures Act Section 51(3) requirements.",
-        confidence=0.92
-    )
+    result = tdr_service.validate_objection(request.objection_grounds, request.amount)
+    return TDRValidationResponse(**result)
 
 @app.post("/api/predict/case-outcome", response_model=PredictionResponse)
 async def predict_outcome(request: PredictionRequest):
-    return PredictionResponse(
-        probability_win=0.72,
-        precedents_found=["Republic v Commissioner of Domestic Taxes [2022]", "KRA v ABC Ltd [2024]"],
-        rationale="Prediction based on historical similarity to 254 cases in the Tax and Commercial divisions.",
-        confidence=0.68
-    )
+    result = litigation_service.predict_case_outcome(request.title, request.description, request.case_type)
+    return PredictionResponse(**result)
+
+class TaskGenerationRequest(BaseModel):
+    case_type: str
+    status: str
+
+class TaskGenerationResponse(BaseModel):
+    tasks: list
+
+@app.post("/api/litigation/generate-tasks", response_model=TaskGenerationResponse)
+async def generate_tasks(request: TaskGenerationRequest):
+    tasks = litigation_service.generate_case_tasks(request.case_type, request.status)
+    return TaskGenerationResponse(tasks=tasks)
 
 class AgendaRequest(BaseModel):
     title: str
@@ -211,23 +241,26 @@ class ADRResponse(BaseModel):
 
 @app.post("/api/analyze/adr-suitability", response_model=ADRResponse)
 async def analyze_adr(request: ADRRequest):
-    # Mock ADR logic
-    score = 0.5
-    path = "Litigation"
-    
-    if request.amount < 1000000:
-        score = 0.85
-        path = "Mediation"
-    elif "commercial" in request.title.lower() or "contract" in request.title.lower():
-        score = 0.75
-        path = "Arbitration"
-        
-    return ADRResponse(
-        suitability_score=score,
-        recommended_path=path,
-        rationale=f"ADR recommended due to {('low value' if score > 0.8 else 'commercial nature')} of the dispute, favoring a faster, confidential resolution over court litigation.",
-        confidence=0.88
-    )
+    result = tdr_service.assess_adr_suitability(request.title, request.description, request.amount)
+    return ADRResponse(**result)
+
+class SettlementScenarioRequest(BaseModel):
+    claim_amount: float
+    settlement_percentage: float
+
+class SettlementScenarioResponse(BaseModel):
+    claim_amount: float
+    settlement_percentage: float
+    projected_immediate_revenue: float
+    collection_cost_savings: float
+    time_value_savings: float
+    net_economic_benefit: float
+    recommendation: str
+
+@app.post("/api/analyze/settlement-scenario", response_model=SettlementScenarioResponse)
+async def analyze_settlement_scenario(request: SettlementScenarioRequest):
+    result = tdr_service.model_settlement_scenario(request.claim_amount, request.settlement_percentage)
+    return SettlementScenarioResponse(**result)
 
 class MinutesRequest(BaseModel):
     meeting_notes: str
@@ -252,11 +285,68 @@ async def extract_minutes(request: MinutesRequest):
         rationale="Structured minutes extracted using NLP summarization and entity extraction models trained on board meeting patterns."
     )
 
+class SemanticSearchRequest(BaseModel):
+    query: str
+    document_type: Optional[str] = None
+
+class SemanticSearchResponse(BaseModel):
+    results: list
+    
+@app.post("/api/research/search", response_model=SemanticSearchResponse)
+async def semantic_search(request: SemanticSearchRequest):
+    results = legal_research.semantic_search(request.query, request.document_type)
+    return SemanticSearchResponse(results=results)
+
+class ExplainProvisionRequest(BaseModel):
+    provision_text: str
+    context: str
+
+class ExplainProvisionResponse(BaseModel):
+    explanation: str
+
+@app.post("/api/research/explain", response_model=ExplainProvisionResponse)
+async def explain_provision(request: ExplainProvisionRequest):
+    explanation = legal_research.explain_provision(request.provision_text, request.context)
+    return ExplainProvisionResponse(explanation=explanation)
+
+
 @app.get("/models/status")
 async def get_model_status():
     return {
         "legal_bert_loaded": True,
         "checklist_available": True,
         "qdrant_connected": True,
-        "triage_active": True
+        "triage_active": True,
+        "litigation_engine_active": True,
+        "portal_guidance_active": True
     }
+
+class GuidanceRequest(BaseModel):
+    query: str
+
+class GuidanceResponse(BaseModel):
+    guidance: str
+
+@app.post("/api/portal/guidance", response_model=GuidanceResponse)
+async def provide_guidance(request: GuidanceRequest):
+    guidance = portal_service.provide_guidance(request.query)
+    return GuidanceResponse(guidance=guidance)
+
+class TranslationRequest(BaseModel):
+    text: str
+
+class TranslationResponse(BaseModel):
+    translated_text: str
+
+@app.post("/api/portal/translate", response_model=TranslationResponse)
+async def translate_text(request: TranslationRequest):
+    translated = portal_service.translate_to_swahili(request.text)
+    return TranslationResponse(translated_text=translated)
+
+class IngestRequest(BaseModel):
+    records: list
+
+@app.post("/api/ingest/eklr", tags=["Ingestion"])
+async def sync_eklr(request: IngestRequest):
+    count = ingestion_service.bulk_ingest_eklr(request.records)
+    return {"status": "success", "synced_count": count}

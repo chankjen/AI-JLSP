@@ -1,7 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-store';
+import apiClient from '@/lib/api-client';
 
 // ============================================================
 // Advocate Dashboard — Kenny's role-specific landing page
@@ -37,6 +40,27 @@ const quickActions = [
 
 export default function AdvocateDashboard() {
   const { user } = useAuth();
+  const [cases, setCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchCases = async () => {
+      try {
+        const res = await apiClient.get('/cases');
+        setCases(res.data.cases || []);
+      } catch (err) {
+        console.error('Failed to fetch cases:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCases();
+  }, []);
+
+  const handleCaseClick = (id: string) => {
+    router.push(`/dashboard/cases/${id}`);
+  };
 
   return (
     <div className="space-y-8">
@@ -56,7 +80,6 @@ export default function AdvocateDashboard() {
             Constitution Art 48 (Access to Justice) · DPA Cap 411C · Civil Procedure Rules 2010
           </p>
         </div>
-        {/* Decorative circle */}
         <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/5" />
         <div className="absolute -right-8 -bottom-12 h-40 w-40 rounded-full bg-white/5" />
       </div>
@@ -85,19 +108,30 @@ export default function AdvocateDashboard() {
               View all →
             </Link>
           </div>
-          <div className="space-y-3">
-            {recentCases.map((c) => (
-              <div key={c.ref} className="flex items-start justify-between p-4 rounded-lg border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition cursor-pointer">
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">{c.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{c.ref} · {c.court}</p>
+          
+          {loading ? (
+            <div className="py-10 text-center text-gray-400 text-sm italic">Synchronizing case files...</div>
+          ) : cases.length === 0 ? (
+            <div className="py-10 text-center text-gray-400 text-sm italic">No active cases registered.</div>
+          ) : (
+            <div className="space-y-3">
+              {cases.slice(0, 5).map((c) => (
+                <div 
+                  key={c.id} 
+                  onClick={() => handleCaseClick(c.id)}
+                  className="flex items-start justify-between p-4 rounded-lg border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition cursor-pointer group"
+                >
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm group-hover:text-indigo-700">{c.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{c.case_number} · {c.case_type}</p>
+                  </div>
+                  <span className={`ml-4 shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase bg-emerald-100 text-emerald-800`}>
+                    {c.status}
+                  </span>
                 </div>
-                <span className={`ml-4 shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${c.statusColor}`}>
-                  {c.status}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right Column */}
@@ -167,3 +201,4 @@ export default function AdvocateDashboard() {
     </div>
   );
 }
+

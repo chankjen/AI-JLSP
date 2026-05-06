@@ -33,9 +33,10 @@ router.get('/:id', authenticateToken, checkPermission('view_cases'), async (req:
 
     const result = await db.query(
       `SELECT id, case_number, title, status, filed_date, next_hearing, judge_name, 
-              case_type, description, parties, jurisdiction
+              case_type, description, parties, jurisdiction,
+              court_name, plaintiff, defendant, witnesses, verdicts, next_mention_date
        FROM cases 
-       WHERE id = $1 AND (filed_by = $2 OR judge_id = $2)`,
+       WHERE id = $1 AND (filed_by = $2 OR assigned_to = $2)`,
       [req.params.id, req.user.sub]
     );
 
@@ -45,7 +46,7 @@ router.get('/:id', authenticateToken, checkPermission('view_cases'), async (req:
 
     // Get documents
     const docsResult = await db.query(
-      `SELECT id, name, type, uploaded_at, status FROM case_documents WHERE case_id = $1`,
+      `SELECT id, title as name, document_type as type, uploaded_at, validation_status as status FROM documents WHERE case_id = $1`,
       [req.params.id]
     );
 
@@ -65,6 +66,7 @@ router.get('/:id', authenticateToken, checkPermission('view_cases'), async (req:
     return res.status(500).json({ error: 'Unable to fetch case' });
   }
 });
+
 
 
 // File new case
@@ -205,6 +207,66 @@ router.get('/:id/adr-suitability', authenticateToken, checkPermission('view_case
   } catch (error) {
     console.error('Error analyzing ADR suitability:', error);
     return res.status(500).json({ error: 'Unable to analyze ADR suitability' });
+  }
+});
+
+// Issue Summons & Notify Defendant
+router.post('/:id/issue-summons', authenticateToken, checkPermission('manage_cases'), async (req: AuthRequest, res) => {
+  try {
+    const caseResult = await db.query(
+      'SELECT case_number, title, plaintiff, defendant, court_name, next_mention_date FROM cases WHERE id = $1', 
+      [req.params.id]
+    );
+    
+    if (caseResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Case not found' });
+    }
+
+    const c = caseResult.rows[0];
+    const { defendantEmail, defendantPhone } = req.body;
+
+    if (!defendantEmail) {
+      return res.status(400).json({ error: 'Defendant email is required for e-service' });
+    }
+
+    // Import notification service
+    const { sendSummonsNotification } = await import('../services/notificationService');
+
+    // Trigger Notifications
+    await sendSummonsNotification({
+      defendantEmail,
+      defendantPhone,
+      caseNumber: c.case_number,
+      plaintiffName: c.plaintiff || 'The Plaintiff',
+      courtName: c.court_name || 'The High Court',
+      nextHearingDate: c.next_mention_date ? new Date(c.next_mention_date).toLocaleDateString() : undefined
+    });
+
+    // Update case status
+    await db.query("UPDATE cases SET status = 'received' WHERE id = $1", [req.params.id]);
+
+    return res.status(200).json({
+      message: 'Official summons issued and defendant notified via SMS/Email',
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Error issuing summons:', error);
+    return res.status(500).json({ error: 'Unable to issue summons' });
+  }
+});
+
+// Generate & Download Affidavit of Service
+router.get('/:id/affidavit-of-service', authenticateToken, checkPermission('view_cases'), async (req: AuthRequest, res) => {
+  try {
+    const { generateAffidavitOfService } = await import('../services/documentGeneratorService');
+    const doc = await generateAffidavitOfService(req.params.id);
+
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Disposition', `attachment; filename="${doc.title}"`);
+    return res.status(200).send(doc.content);
+  } catch (error) {
+    console.error('Error generating affidavit:', error);
+    return res.status(500).json({ error: 'Unable to generate affidavit of service' });
   }
 });
 

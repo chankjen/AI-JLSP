@@ -1,7 +1,9 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-store';
+import apiClient from '@/lib/api-client';
 
 // ============================================================
 // TDR Officer Dashboard — Alicia's role-specific landing page
@@ -37,6 +39,22 @@ const quickActions = [
 
 export default function TDROfficerDashboard() {
   const { user } = useAuth();
+  const [objections, setObjections] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchObjections = async () => {
+      try {
+        const res = await apiClient.get('/tdr');
+        setObjections(res.data.tdrDisputes || []);
+      } catch (err) {
+        console.error('Failed to fetch objections:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchObjections();
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -82,26 +100,37 @@ export default function TDROfficerDashboard() {
               View all →
             </Link>
           </div>
-          <div className="space-y-3">
-            {objectionQueue.map((o) => (
-              <div key={o.ref} className="flex items-start gap-4 p-4 rounded-lg border border-gray-100 hover:border-rose-200 hover:bg-rose-50/30 transition cursor-pointer">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-gray-900 text-sm">{o.taxpayer}</p>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${o.statusColor}`}>
-                      {o.status}
-                    </span>
+          
+          {loading ? (
+            <div className="py-10 text-center text-gray-400 text-sm italic">Loading objections...</div>
+          ) : objections.length === 0 ? (
+            <div className="py-10 text-center text-gray-400 text-sm italic">No active objections in queue.</div>
+          ) : (
+            <div className="space-y-3">
+              {objections.map((o) => (
+                <Link 
+                  key={o.id} 
+                  href={`/dashboard/tdr/${o.id}`}
+                  className="flex items-start gap-4 p-4 rounded-lg border border-gray-100 hover:border-rose-200 hover:bg-rose-50/30 transition cursor-pointer"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900 text-sm">{o.taxpayer_name}</p>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-800 capitalize`}>
+                        {o.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{o.objection_id} · Year {o.tax_year}</p>
+                    <p className="text-xs font-bold text-gray-700 mt-1">KES {parseFloat(o.amount_disputed).toLocaleString()}</p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{o.ref} · {o.grounds}</p>
-                  <p className="text-xs font-bold text-gray-700 mt-1">{o.amount}</p>
-                </div>
-                <div className={`shrink-0 text-center rounded-lg px-3 py-2 ${o.daysLeft <= 3 ? 'bg-red-100' : o.daysLeft <= 7 ? 'bg-amber-100' : 'bg-gray-100'}`}>
-                  <p className={`text-xl font-extrabold ${o.daysLeft <= 3 ? 'text-red-700' : o.daysLeft <= 7 ? 'text-amber-700' : 'text-gray-700'}`}>{o.daysLeft}</p>
-                  <p className="text-xs text-gray-500">days left</p>
-                </div>
-              </div>
-            ))}
-          </div>
+                  <div className="shrink-0 text-center rounded-lg px-3 py-2 bg-gray-100">
+                    <p className="text-xl font-extrabold text-gray-700">{o.validity_score || '?'}</p>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold">Score</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right Column */}
@@ -156,16 +185,14 @@ export default function TDROfficerDashboard() {
         <div className="flex-1">
           <p className="font-semibold text-amber-900">14-Day Statutory Window Reminder</p>
           <p className="text-sm text-amber-700 mt-1">
-            2 objections in queue expire within 3 days. TPA Sec 51(3) requires a decision or extension before expiry to avoid deemed allowance.
+            {objections.length} active objections in queue. TPA Sec 51(3) requires a decision or extension before expiry to avoid deemed allowance.
           </p>
           <p className="text-xs text-amber-400 mt-2 italic">
             ⚠️ AI triage outputs are Non-Binding Advisory only. Final TDR decisions require officer sign-off. [AI-JLSP PRD Sec 7 | TPA Sec 51]
           </p>
         </div>
-        <Link href="/dashboard/tdr" className="ml-auto shrink-0 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-          Review Queue →
-        </Link>
       </div>
     </div>
   );
 }
+

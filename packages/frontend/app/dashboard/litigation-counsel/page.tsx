@@ -1,7 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-store';
+import apiClient from '@/lib/api-client';
 
 // ============================================================
 // Litigation Counsel Dashboard — Baha's role-specific landing page
@@ -49,6 +52,28 @@ const urgencyStyles: Record<string, string> = {
 
 export default function LitigationCounselDashboard() {
   const { user } = useAuth();
+  const [cases, setCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchCases = async () => {
+      try {
+        const res = await apiClient.get('/cases');
+        setCases(res.data.cases || []);
+      } catch (err) {
+        console.error('Failed to fetch cases:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCases();
+  }, []);
+
+  const handleCaseClick = (id: string) => {
+    router.push(`/dashboard/cases/${id}`);
+  };
 
   return (
     <div className="space-y-8">
@@ -95,21 +120,33 @@ export default function LitigationCounselDashboard() {
                 View all →
               </Link>
             </div>
-            <div className="space-y-3">
-              {caseList.map((c) => (
-                <div key={c.ref} className={`flex items-start gap-4 p-4 rounded-lg ${urgencyStyles[c.urgency]} cursor-pointer hover:opacity-90 transition`}>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm">{c.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{c.ref} · {c.division}</p>
-                    <div className="flex gap-3 mt-1.5 flex-wrap">
-                      <span className="text-xs bg-white/70 text-gray-700 rounded-full px-2 py-0.5 font-medium">{c.stage}</span>
-                      <span className="text-xs text-gray-500">Next: {c.nextAction}</span>
+            
+            {loading ? (
+              <div className="py-10 text-center text-gray-400 text-sm italic">Retrieving case files...</div>
+            ) : cases.length === 0 ? (
+              <div className="py-10 text-center text-gray-400 text-sm italic">No active litigation cases assigned.</div>
+            ) : (
+              <div className="space-y-3">
+                {cases.map((c) => (
+                  <div 
+                    key={c.id} 
+                    onClick={() => handleCaseClick(c.id)}
+                    className={`flex items-start gap-4 p-4 rounded-lg border-l-4 border-slate-400 bg-slate-50 cursor-pointer hover:bg-slate-100 transition group`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm group-hover:text-slate-900">{c.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{c.case_number} · {c.jurisdiction}</p>
+                      <div className="flex gap-3 mt-1.5 flex-wrap">
+                        <span className="text-[10px] bg-white text-emerald-700 rounded-full px-2 py-0.5 font-black uppercase border border-emerald-100 shadow-sm">{c.status}</span>
+                        <span className="text-[10px] text-gray-400 font-bold flex items-center gap-1 uppercase tracking-widest">📅 Updated {new Date(c.updated_at).toLocaleDateString()}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
+
 
           {/* AI Reviews Requiring Approval */}
           <div className="bg-white rounded-xl shadow-md p-6">
@@ -187,3 +224,4 @@ export default function LitigationCounselDashboard() {
     </div>
   );
 }
+

@@ -100,11 +100,18 @@ router.post('/:id/validate', authenticateToken, checkPermission('validate_object
 
     const tdr = tdrResult.rows[0];
 
+    // Integration: Fetch real-time data from iTax
+    const { ExternalIntegrationService } = await import('../services/externalIntegrationService');
+    const taxData = await ExternalIntegrationService.fetchTaxAssessment(tdr.objection_id);
+    const paymentVerified = await ExternalIntegrationService.verifyUndisputedTaxPayment(tdr.objection_id);
+
     // Call AI Validation (TPA Sec 51(3))
     const validationResults = await validateTDRObjection({
       objection_grounds: tdr.description || '',
-      taxpayer_type: 'individual', // Mock
-      amount: tdr.amount_disputed
+      taxpayer_type: 'individual', 
+      amount: tdr.amount_disputed,
+      itax_data: taxData,
+      payment_verified: paymentVerified
     });
 
     const updateResult = await db.query(
@@ -159,6 +166,66 @@ router.post('/:id/generate-crf', authenticateToken, checkPermission('generate_cr
   } catch (error) {
     console.error('Error generating CRF:', error);
     return res.status(500).json({ error: 'Unable to generate CRF' });
+  }
+});
+
+// Assess ADR Suitability
+router.post('/:id/assess-adr', authenticateToken, checkPermission('view_tdr'), async (req: AuthRequest, res) => {
+  try {
+    const tdrResult = await db.query('SELECT * FROM tax_disputes WHERE id = $1', [req.params.id]);
+    if (tdrResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Tax dispute not found' });
+    }
+
+    const tdr = tdrResult.rows[0];
+
+    // Assuming we have an assessADRSuitability function in aiValidationService
+    const { assessADRSuitability } = await import('../services/aiValidationService');
+    const adrResult = await assessADRSuitability(
+      `Objection ${tdr.objection_id}`, 
+      tdr.description || '', 
+      tdr.amount_disputed
+    );
+
+    return res.status(200).json({
+      message: 'ADR suitability assessed',
+      assessment: adrResult
+    });
+  } catch (error) {
+    console.error('Error assessing ADR suitability:', error);
+    return res.status(500).json({ error: 'Unable to assess ADR suitability' });
+  }
+});
+
+// Model Settlement Scenario
+router.post('/:id/scenario-model', authenticateToken, checkPermission('manage_tdr'), async (req: AuthRequest, res) => {
+  try {
+    const { settlementPercentage } = req.body;
+    if (settlementPercentage === undefined) {
+      return res.status(400).json({ error: 'Missing settlementPercentage' });
+    }
+
+    const tdrResult = await db.query('SELECT * FROM tax_disputes WHERE id = $1', [req.params.id]);
+    if (tdrResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Tax dispute not found' });
+    }
+
+    const tdr = tdrResult.rows[0];
+
+    const { modelSettlementScenario } = await import('../services/aiValidationService');
+    const scenarioResult = await modelSettlementScenario(tdr.amount_disputed, parseFloat(settlementPercentage));
+
+    // Integration: Report projected revenue impact to IFMIS
+    const { ExternalIntegrationService } = await import('../services/externalIntegrationService');
+    await ExternalIntegrationService.reportRevenueImpact(req.params.id, scenarioResult.projected_immediate_revenue);
+
+    return res.status(200).json({
+      message: 'Settlement scenario modeled and reported to IFMIS',
+      scenario: scenarioResult
+    });
+  } catch (error) {
+    console.error('Error modeling scenario:', error);
+    return res.status(500).json({ error: 'Unable to model scenario' });
   }
 });
 
