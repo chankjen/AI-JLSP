@@ -295,3 +295,33 @@ export async function generateSkeletalArgument(doc1: any, doc2: any, comparison:
     `;
   }
 }
+
+export async function chatbotQuery(query: string, context?: any) {
+  try {
+    const response = await axios.post(`${aiServiceURL}/api/chatbot/query`, { query, context });
+    return response.data;
+  } catch (error) {
+    console.error('Chatbot query error:', error);
+    return {
+      response: "I'm sorry, I'm having trouble connecting to the legal intelligence engine. Please try again in a moment.",
+      intent: 'error'
+    };
+  }
+}
+
+export async function analyzeChatbotFile(fileContent: string, fileType: string, metadata?: any) {
+  try {
+    const response = await axios.post(`${aiServiceURL}/api/chatbot/analyze-file`, {
+      file_content: fileContent,
+      file_type: fileType,
+      metadata
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Chatbot file analysis error:', error);
+    return {
+      error: "Unable to analyze the document at this time.",
+      status: 'error'
+    };
+  }
+}

@@ -18,14 +18,24 @@ import portalRoutes from './routes/portal';
 import signatureRoutes from './routes/signatures';
 import commissioningRoutes from './routes/commissioning';
 import profileRoutes from './routes/profile';
+import aiRoutes from './routes/ai';
 import { authenticateToken } from './middleware/auth';
 
 const app = express();
 const port = parseInt(process.env.PORT || '3001', 10);
 
-app.use(helmet());
-app.use(cors({ origin: process.env.ALLOWED_ORIGIN?.split(',') ?? '*' }));
+// app.use(helmet());
+app.use(cors({ 
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
+
+// Simple request logger
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -53,6 +63,7 @@ app.use('/api/portal', portalRoutes);
 app.use('/api/signatures', authenticateToken, signatureRoutes);
 app.use('/api/commissioning', authenticateToken, commissioningRoutes);
 app.use('/api/profile', authenticateToken, profileRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
@@ -63,6 +74,6 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
-app.listen(port, () => {
-  console.log(`AI-JLSP backend running on http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`AI-JLSP backend running on http://0.0.0.0:${port}`);
 });

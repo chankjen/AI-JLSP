@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import Chatbot from '@/components/Chatbot';
 
 // ── Role-specific nav items ──────────────────────────────────────
 const NAV_BY_ROLE: Record<string, { href: string; label: string; icon: string }[]> = {
@@ -14,12 +15,14 @@ const NAV_BY_ROLE: Record<string, { href: string; label: string; icon: string }[
     { href: '/dashboard/research', label: 'Legal Research', icon: '🔍' },
     { href: '/dashboard/conveyancing', label: 'Conveyancing', icon: '📑' },
     { href: '/dashboard/compliance', label: 'Compliance', icon: '✅' },
+    { href: '/dashboard/ai-analysis', label: 'AI Intelligence', icon: '🤖' },
   ],
   tdr_officer: [
     { href: '/dashboard/tdr-officer', label: 'Home', icon: '🏠' },
     { href: '/dashboard/tdr', label: 'TDR Queue', icon: '📥' },
     { href: '/dashboard/cases', label: 'Cases', icon: '📋' },
     { href: '/dashboard/compliance', label: 'Compliance', icon: '📊' },
+    { href: '/dashboard/ai-analysis', label: 'AI Intelligence', icon: '🤖' },
   ],
   litigation_counsel: [
     { href: '/dashboard/litigation-counsel', label: 'Home', icon: '🏠' },
@@ -27,27 +30,32 @@ const NAV_BY_ROLE: Record<string, { href: string; label: string; icon: string }[
     { href: '/dashboard/research', label: 'Precedent Search', icon: '📚' },
     { href: '/dashboard/tdr', label: 'TDR Appeals', icon: '💼' },
     { href: '/dashboard/compliance', label: 'Audit Trail', icon: '🔒' },
+    { href: '/dashboard/ai-analysis', label: 'AI Intelligence', icon: '🤖' },
   ],
   board_secretary: [
     { href: '/dashboard/board-secretary', label: 'Home', icon: '🏠' },
     { href: '/dashboard/board', label: 'Board Services', icon: '👥' },
     { href: '/dashboard/cases', label: 'Cases', icon: '📋' },
     { href: '/dashboard/compliance', label: 'Compliance', icon: '✅' },
+    { href: '/dashboard/ai-analysis', label: 'AI Intelligence', icon: '🤖' },
   ],
   admin: [
     { href: '/dashboard/admin', label: 'Admin Panel', icon: '⚙️' },
     { href: '/dashboard/cases', label: 'Cases', icon: '📋' },
     { href: '/dashboard/tdr', label: 'TDR', icon: '💼' },
     { href: '/dashboard/compliance', label: 'Compliance', icon: '📊' },
+    { href: '/dashboard/ai-analysis', label: 'AI Intelligence', icon: '🤖' },
   ],
   dpo: [
     { href: '/dashboard/compliance', label: 'DPA Compliance', icon: '🔒' },
     { href: '/dashboard/cases', label: 'Cases', icon: '📋' },
+    { href: '/dashboard/ai-analysis', label: 'AI Intelligence', icon: '🤖' },
   ],
   citizen: [
     { href: '/dashboard/cases/file-new', label: 'File a Case', icon: '📝' },
     { href: '/dashboard/cases', label: 'My Cases', icon: '📋' },
     { href: '/dashboard/research', label: 'Legal Aid', icon: '🔍' },
+    { href: '/dashboard/ai-analysis', label: 'AI Intelligence', icon: '🤖' },
   ],
 };
 
@@ -190,6 +198,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+      {/* Global AI Chatbot */}
+      <Chatbot />
     </div>
   );
 }

@@ -11,6 +11,7 @@ from .services.civil_procedure_checklist import CivilProcedureChecklist
 from .services.litigation_service import LitigationService
 from .services.portal_service import PortalService
 from .services.ingestion_service import IngestionService
+from .services.chatbot_service import ChatbotService
 
 app = FastAPI(title="AI-JLSP AI Service", version="1.0.0")
 
@@ -24,6 +25,7 @@ tdr_service = TDRService()
 litigation_service = LitigationService()
 portal_service = PortalService()
 ingestion_service = IngestionService()
+chatbot_service = ChatbotService()
 
 class DocumentValidationRequest(BaseModel):
     document_text: str
@@ -350,3 +352,32 @@ class IngestRequest(BaseModel):
 async def sync_eklr(request: IngestRequest):
     count = ingestion_service.bulk_ingest_eklr(request.records)
     return {"status": "success", "synced_count": count}
+
+class ChatbotQueryRequest(BaseModel):
+    query: str
+    context: Optional[Dict[str, Any]] = None
+
+@app.post("/api/chatbot/query")
+async def chatbot_query(request: ChatbotQueryRequest):
+    try:
+        result = await chatbot_service.process_query(request.query, request.context)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chatbot query failed: {str(e)}")
+
+class ChatbotFileAnalysisRequest(BaseModel):
+    file_content: str
+    file_type: str
+    metadata: Optional[Dict[str, Any]] = None
+
+@app.post("/api/chatbot/analyze-file")
+async def chatbot_analyze_file(request: ChatbotFileAnalysisRequest):
+    try:
+        result = await chatbot_service.analyze_file(
+            request.file_content, 
+            request.file_type, 
+            request.metadata
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File analysis failed: {str(e)}")

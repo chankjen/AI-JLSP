@@ -14,6 +14,8 @@ export default function LegalResearchPage() {
   const [compareSelection, setCompareSelection] = useState<any[]>([]);
   const [comparison, setComparison] = useState<any>(null);
   const [comparing, setComparing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
   const LAW_FILTERS = [
     { id: 'all', name: 'All Laws', icon: '🌐' },
@@ -25,14 +27,27 @@ export default function LegalResearchPage() {
     { id: 'international_law', name: 'International', icon: '🇺🇳' },
   ];
 
-  const handleSearch = async () => {
+  const handleSearch = async (reset = true) => {
     if (!query) return;
-    setLoading(true);
+    const targetPage = reset ? 1 : page + 1;
+    if (reset) {
+        setResults([]);
+        setLoading(true);
+    }
+    
     try {
       const res = await apiClient.get('/research/search', { 
-        params: { query, type: selectedType === 'all' ? undefined : selectedType } 
+        params: { 
+            query, 
+            type: selectedType === 'all' ? undefined : selectedType,
+            page: targetPage
+        } 
       });
-      setResults(res.data.results || []);
+      
+      const newResults = res.data.results || [];
+      setResults(prev => reset ? newResults : [...prev, ...newResults]);
+      setHasMore(res.data.hasMore);
+      setPage(targetPage);
     } catch (err) {
       console.error('Search failed:', err);
     } finally {
@@ -265,59 +280,99 @@ export default function LegalResearchPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Search Box */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <span className="text-2xl">🔍</span> Semantic Law Search
-            </h2>
-            <div className="flex gap-3">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100/30 p-10 border border-indigo-50 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4">
+                <span className="text-[10px] font-black text-white bg-indigo-600 px-3 py-1 rounded-full shadow-lg animate-pulse">
+                    JURISPRUDENCE ENGINE v3.0
+                </span>
+            </div>
+            
+            <div className="flex items-center gap-4 mb-8">
+              <span className="text-4xl">🔍</span>
+              <h2 className="text-2xl font-black text-gray-900 tracking-tight">Semantic Law Search</h2>
+            </div>
+            
+            <div className="flex gap-4 p-2 bg-gray-50 rounded-3xl border border-gray-100">
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder="Describe a legal topic, statute, or international treaty..."
-                className="flex-1 px-6 py-4 bg-gray-50 border border-transparent rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-sm transition font-medium"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch(true)}
+                placeholder="Search legal topics (e.g. data protection, fair trial, tax objection)..."
+                className="flex-1 bg-transparent px-6 py-4 outline-none text-gray-900 font-medium placeholder-gray-400"
               />
-              <button 
-                onClick={handleSearch}
+              <button
+                onClick={() => handleSearch(true)}
                 disabled={loading}
-                className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 disabled:opacity-50"
+                className="px-10 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 transition flex items-center justify-center shadow-lg shadow-indigo-500/20 active:scale-95"
               >
-                {loading ? '🧠' : 'Search'}
+                {loading ? '🧠' : 'Search Intelligence'}
               </button>
             </div>
 
             {results.length > 0 && (
               <div className="mt-10 space-y-5">
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Top Authorities Found</h3>
-                {results.map((res, idx) => (
-                  <div key={idx} className="p-6 rounded-2xl border-2 border-gray-50 hover:border-indigo-500 hover:bg-indigo-50/20 transition group cursor-pointer bg-white relative">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="p-2 bg-indigo-100 rounded-lg text-indigo-600">⚖️</span>
-                        <h4 className="font-black text-gray-900 group-hover:text-indigo-700 leading-tight">{res.title}</h4>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100 shadow-sm">RELEVANCE: {(res.score * 100).toFixed(1)}%</span>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Top Authorities Found</h3>
+                    <span className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded tracking-widest">
+                        {results.some(r => r.id.startsWith('web_')) ? '🌍 LIVE WEB SEARCH ACTIVE' : '📜 INDEXED RECORDS ONLY'}
+                    </span>
+                </div>
+                
+                <div className="space-y-5 max-h-[1000px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200">
+                    {results.map((res, idx) => (
+                    <div key={idx} className="p-6 rounded-2xl border-2 border-gray-50 hover:border-indigo-500 hover:bg-indigo-50/20 transition group cursor-pointer bg-white relative">
+                        <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3">
+                            <span className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                                {res.id.startsWith('web_') ? '🌐' : '⚖️'}
+                            </span>
+                            <div className="flex flex-col">
+                                <h4 className="font-black text-gray-900 group-hover:text-indigo-700 leading-tight">
+                                    {res.title}
+                                </h4>
+                                {res.id.startsWith('web_') && (
+                                    <span className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter mt-1">Found via Internet Search</span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                            <span className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100 shadow-sm">RELEVANCE: {(res.score * 100).toFixed(1)}%</span>
+                            <button 
+                            onClick={(e) => { e.stopPropagation(); addToCompare(res); }}
+                            className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg transition ${
+                                compareSelection.some(d => d.id === res.id) ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-indigo-600 hover:text-white'
+                            }`}
+                            >
+                            {compareSelection.some(d => d.id === res.id) ? '✓ Added' : '+ Compare'}
+                            </button>
+                        </div>
+                        </div>
+                        <p className="text-sm text-gray-500 font-medium leading-relaxed mb-4 pl-11">
+                        "{res.content_snippet}"
+                        </p>
+                        <div className="mt-3 flex gap-4 pl-11">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded">{res.type.replace('_', ' ')}</span>
+                        {!res.id.startsWith('web_') && (
+                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest border-l-2 border-emerald-500 pl-2">Binding Precedent</span>
+                        )}
+                        </div>
+                    </div>
+                    ))}
+                </div>
+
+                {hasMore && (
+                    <div className="pt-8 flex flex-col items-center gap-4">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic animate-pulse">More results available on the next page...</p>
                         <button 
-                          onClick={(e) => { e.stopPropagation(); addToCompare(res); }}
-                          className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg transition ${
-                            compareSelection.some(d => d.id === res.id) ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-indigo-600 hover:text-white'
-                          }`}
+                            onClick={() => handleSearch(false)}
+                            disabled={loading}
+                            className="px-10 py-4 bg-white border-2 border-indigo-600 text-indigo-600 rounded-2xl font-black hover:bg-indigo-600 hover:text-white transition shadow-xl shadow-indigo-100 uppercase text-xs tracking-[0.2em]"
                         >
-                          {compareSelection.some(d => d.id === res.id) ? '✓ Added' : '+ Compare'}
+                            {loading ? '🧠 Searching...' : 'View Next Page (10+ More)'}
                         </button>
-                      </div>
                     </div>
-                    <p className="text-sm text-gray-500 font-medium leading-relaxed mb-4 pl-11">
-                      "{res.content_snippet}"
-                    </p>
-                    <div className="mt-3 flex gap-4 pl-11">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded">{res.type.replace('_', ' ')}</span>
-                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest border-l-2 border-emerald-500 pl-2">Binding Precedent</span>
-                    </div>
-                  </div>
-                ))}
+                )}
               </div>
             )}
           </div>

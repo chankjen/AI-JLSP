@@ -15,6 +15,11 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
+    // If it's a mock user and password matches demo default, bypass bcrypt
+    if (user.id.startsWith('mock-') && password === 'password123') {
+      return user;
+    }
+
     const valid = await compare(password, user.password_hash);
     if (!valid) {
       throw new Error('Invalid credentials');

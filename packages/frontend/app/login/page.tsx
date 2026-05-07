@@ -9,37 +9,44 @@ import apiClient from '@/lib/api-client';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isLoading } = useAuth();
+  const { isLoading, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e?: React.FormEvent, loginEmail?: string, loginPassword?: string) => {
+    if (e) e.preventDefault();
     setError('');
     setLoading(true);
 
+    const targetEmail = loginEmail || email;
+    const targetPassword = loginPassword || password;
+
     try {
       const response = await apiClient.post('/auth/login', {
-        email,
-        password,
+        email: targetEmail,
+        password: targetPassword,
       });
 
       const { tokens, user } = response.data;
       
-      // Store token in cookie (for api-client interceptor) AND localStorage
-      Cookies.set('auth_token', tokens.accessToken, { expires: 1 });
-      localStorage.setItem('authToken', tokens.accessToken);
-      localStorage.setItem('user', JSON.stringify(user));
+      login(tokens.accessToken, user);
       
-      // Redirect to dashboard
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      console.error('Frontend Login Error:', err);
+      const msg = err.response?.data?.message || err.response?.data?.error || 'Login failed';
+      setError(msg);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loginAs = (roleEmail: string, rolePassword: string = 'password123') => {
+    setEmail(roleEmail);
+    setPassword(rolePassword);
+    handleLogin(undefined, roleEmail, rolePassword);
   };
 
   if (isLoading) {
@@ -61,7 +68,7 @@ export default function LoginPage() {
           <p className="text-gray-600 mt-2">Kenya Judiciary & KRA</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(e) => handleLogin(e)} className="space-y-6">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
               Email Address
@@ -125,6 +132,38 @@ export default function LoginPage() {
           <Link href="/forgot-password" className="text-sm text-gray-600 hover:text-gray-900">
             Forgot your password?
           </Link>
+        </div>
+        <div className="mt-8 border-t border-gray-100 pt-6">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 text-center">Demo Accounts</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={() => loginAs('advocate@demo.ke')}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg text-[10px] font-bold text-indigo-700 hover:bg-indigo-100 transition-colors"
+            >
+              <span>⚖️</span> Advocate
+            </button>
+            <button 
+              onClick={() => loginAs('tdr@demo.ke')}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-rose-50 border border-rose-100 rounded-lg text-[10px] font-bold text-rose-700 hover:bg-rose-100 transition-colors"
+            >
+              <span>📊</span> TDR Officer
+            </button>
+            <button 
+              onClick={() => loginAs('litigation@demo.ke')}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <span>🏛️</span> Counsel
+            </button>
+            <button 
+              onClick={() => loginAs('admin@demo.ke')}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg text-[10px] font-bold text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              <span>⚙️</span> Admin
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-4 text-center italic">
+            Password for all demo accounts: <span className="font-mono">password123</span>
+          </p>
         </div>
       </div>
     </div>
