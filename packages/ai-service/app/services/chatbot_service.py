@@ -14,6 +14,7 @@ class ChatbotService:
     AI-JLSP Unified Chatbot Service.
     Addresses user queries on cases, legal advice, proceedings, and judgment profiling.
     Handles multi-modal analysis (docs, CSV, URLs, Audio, Video, etc.).
+    Enhanced for litigation anticipation, fun factual summaries, and Swahili gists.
     """
 
     def __init__(self):
@@ -32,13 +33,20 @@ class ChatbotService:
         if any(word in query_lower for word in ["predict", "outcome", "win", "lose", "settle"]):
             return await self._handle_prediction_query(query, context)
         elif any(word in query_lower for word in ["summarize", "summary", "details"]):
-            return await self._handle_summary_query(query, context)
+            if "fun" in query_lower or "simplified" in query_lower:
+                return await self._handle_fun_summary_query(query, context)
+            else:
+                return await self._handle_summary_query(query, context)
         elif any(word in query_lower for word in ["research", "precedent", "case law", "judgement"]):
             return await self._handle_research_query(query, context)
         elif any(word in query_lower for word in ["compliance", "legal", "rules", "regulations"]):
             return await self._handle_compliance_query(query, context)
         elif any(word in query_lower for word in ["profile", "judgement", "judgment", "pattern"]):
             return await self._handle_judgement_profiling(query, context)
+        elif any(word in query_lower for word in ["litigation", "anticipate", "risk", "dispute"]):
+            return await self._handle_litigation_analysis_query(query, context)
+        elif any(word in query_lower for word in ["swahili", "kiswahili", "gist", "translate"]):
+            return await self._handle_swahili_gist_query(query, context)
         else:
             # General legal advice/guidance
             return await self._handle_general_query(query, context)
@@ -73,13 +81,19 @@ class ChatbotService:
         if "signature_detected" in self.ocr.verify_signature_seal(ocr_result["extracted_text"]):
             credibility_score += 0.1
 
+        # Anticipate litigations
+        litigation_risks = self._anticipate_litigations(ocr_result["extracted_text"])
+
         return {
             "type": "document_analysis",
             "extracted_text": ocr_result["extracted_text"],
             "classification": classification["exhibit_class"],
             "compliance": compliance,
             "credibility_score": min(1.0, credibility_score),
+            "litigation_risks": litigation_risks,
             "summary": self._generate_summary(ocr_result["extracted_text"]),
+            "fun_summary": self._generate_fun_summary(ocr_result["extracted_text"]),
+            "swahili_gist": self._generate_swahili_gist(ocr_result["extracted_text"]),
             "timestamp": datetime.utcnow().isoformat()
         }
 
@@ -183,9 +197,103 @@ class ChatbotService:
             "profiles": profiles
         }
 
+    async def _handle_litigation_analysis_query(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        document_text = context.get("document_text", query) if context else query
+        litigation_risks = self._anticipate_litigations(document_text)
+        return {
+            "intent": "litigation_analysis",
+            "response": f"Analyzed the document for potential litigations. Risk score: {litigation_risks['risk_score']:.2f}",
+            "litigation_risks": litigation_risks
+        }
+
+    async def _handle_fun_summary_query(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        case_details = context.get("case_details", query) if context else query
+        fun_summary = self._generate_fun_summary(case_details)
+        return {
+            "intent": "fun_summary",
+            "response": fun_summary,
+            "fun_summary": fun_summary
+        }
+
+    async def _handle_swahili_gist_query(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        case_details = context.get("case_details", query) if context else query
+        swahili_gist = self._generate_swahili_gist(case_details)
+        return {
+            "intent": "swahili_gist",
+            "response": swahili_gist,
+            "swahili_gist": swahili_gist
+        }
+
     def _generate_summary(self, text: str) -> str:
         # Simple extractive summary logic
         sentences = re.split(r'\. |\n', text)
         if len(sentences) <= 3:
             return text
         return ". ".join(sentences[:3]) + "..."
+
+    def _anticipate_litigations(self, text: str) -> Dict[str, Any]:
+        """
+        Analyze document text to anticipate potential litigations or disputes.
+        """
+        text_lower = text.lower()
+        risks = []
+        risk_score = 0.0
+
+        # Keywords indicating potential disputes
+        dispute_keywords = ["breach", "violation", "dispute", "claim", "lawsuit", "penalty", "fine", "non-compliance"]
+        for keyword in dispute_keywords:
+            if keyword in text_lower:
+                risks.append(f"Potential {keyword} issue detected")
+                risk_score += 0.2
+
+        # Check for deadlines
+        if "deadline" in text_lower or "within" in text_lower and "days" in text_lower:
+            risks.append("Deadline-related litigation risk")
+            risk_score += 0.15
+
+        # Financial amounts
+        if re.search(r'\d{1,3}(?:,\d{3})*\s*(?:KSh|shillings?|USD|\$)', text_lower):
+            risks.append("Financial dispute potential")
+            risk_score += 0.1
+
+        # Parties involved
+        parties = []
+        if "plaintiff" in text_lower:
+            parties.append("Plaintiff")
+        if "defendant" in text_lower:
+            parties.append("Defendant")
+        if "taxpayer" in text_lower:
+            parties.append("Taxpayer")
+        if "authority" in text_lower:
+            parties.append("Authority")
+
+        return {
+            "risk_score": min(risk_score, 1.0),
+            "potential_risks": risks,
+            "involved_parties": parties,
+            "recommendations": ["Review compliance", "Seek legal advice"] if risk_score > 0.3 else []
+        }
+
+    def _generate_fun_summary(self, text: str) -> str:
+        """
+        Generate a simplified, fun but factual summary of the case.
+        """
+        sentences = re.split(r'\. |\n', text)
+        key_points = sentences[:3] if len(sentences) > 3 else sentences
+
+        # Make it fun: use emojis, simple language
+        fun_summary = "🚀 Case Alert! " + " ".join(key_points) + " Sounds like a plot twist in a legal drama! 🎭"
+        return fun_summary
+
+    def _generate_swahili_gist(self, text: str) -> str:
+        """
+        Generate a Swahili gist/summary of the case interpretation.
+        Mock implementation - in real scenario, use Swahili NLP model.
+        """
+        # Simple mock translation/summary
+        sentences = re.split(r'\. |\n', text)
+        key_sentence = sentences[0] if sentences else text
+
+        # Mock Swahili gist
+        swahili_gist = f"Maelezo ya Kesi: {key_sentence} - Hii inaweza kuwa na utata wa kisheria. 🏛️"
+        return swahili_gist

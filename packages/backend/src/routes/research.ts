@@ -97,7 +97,7 @@ router.get('/search', authenticateToken, checkPermission('view_research'), async
       results: paginated,
       total: matchedResults.length,
       currentPage: page,
-      hasMore: matchedRecords.length > (offset + limit)
+      hasMore: matchedResults.length > (offset + limit)
     });
 
   } catch (error) {
