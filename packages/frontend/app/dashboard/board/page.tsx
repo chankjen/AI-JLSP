@@ -95,7 +95,7 @@ export default function BoardPage() {
                 {meeting.ai_rationale && (
                   <div className="mt-4 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
                     <p className="text-[10px] font-bold text-indigo-400 uppercase mb-1 tracking-wider">AI Prioritization Rationale</p>
-                    <p className="text-xs text-indigo-800 leading-relaxed italic">"{meeting.ai_rationale}"</p>
+                    <p className="text-xs text-indigo-800 leading-relaxed italic">&quot;{meeting.ai_rationale}&quot;</p>
                   </div>
                 )}
               </div>

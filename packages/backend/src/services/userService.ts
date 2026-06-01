@@ -132,21 +132,37 @@ export async function findUserByEmail(email: string): Promise<UserRecord | null>
 }
 
 export async function findUserById(id: string): Promise<UserRecord | null> {
+  // Check mock users first in development
+  const mockUser = Object.values(MOCK_USERS).find(u => u.id === id);
+  if (mockUser) {
+    console.log(`[UserService] Found mock user by ID: ${id}`);
+    return mockUser;
+  }
+
   try {
-    const result = await query(
-      `SELECT id, email, password_hash, first_name, last_name, role, department, phone_number, mfa_enabled, mfa_secret, is_active, last_login, consent_given, consent_timestamp, consent_version, created_at, updated_at
-       FROM users
-       WHERE id = $1
-       LIMIT 1`,
-      [id]
+    console.log(`[UserService] Querying database for user ID: ${id}`);
+    // Set a 5 second timeout for database queries
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Database query timeout')), 5000)
     );
+    
+    const result = await Promise.race([
+      query(
+        `SELECT id, email, password_hash, first_name, last_name, role, department, phone_number, mfa_enabled, mfa_secret, is_active, last_login, consent_given, consent_timestamp, consent_version, created_at, updated_at
+         FROM users
+         WHERE id = $1
+         LIMIT 1`,
+        [id]
+      ),
+      timeoutPromise
+    ]) as any;
 
     if (result.rows[0]) return result.rows[0];
   } catch (error) {
-    console.warn('Database connection failed, searching mock users by ID.');
+    console.warn(`[UserService] Database connection failed for ID lookup: ${(error as Error).message}`);
   }
   
-  return Object.values(MOCK_USERS).find(u => u.id === id) ?? null;
+  return null;
 }
 
 export async function getUserProfile(id: string): Promise<User> {
