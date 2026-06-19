@@ -58,7 +58,7 @@ COPY --from=dependencies /usr/local/bin /usr/local/bin
 # Copy application code
 COPY --chown=python:python app ./app
 COPY --chown=python:python models ./models
-COPY --chown=python:python pipelines ./pipelines
+COPY --chown=python:python scripts ./scripts
 COPY --chown=python:python config ./config
 
 # Create cache and logs directories

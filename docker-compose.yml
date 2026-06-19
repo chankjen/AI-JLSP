@@ -58,6 +58,22 @@ services:
       timeout: 10s
       retries: 5
 
+  # Ollama (Local LLM and Embeddings)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai_jlsp_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ai_jlsp_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
   # Backend Service (Node.js/Express - CRUD, Auth, RBAC)
   backend:
     build:
@@ -128,6 +144,7 @@ services:
     volumes:
       - ./packages/ai-service:/app
       - ai_models_cache:/app/models
+      - ./docs:/app/docs
     networks:
       - ai_jlsp_network
     healthcheck:
@@ -170,6 +187,8 @@ volumes:
   qdrant_data:
     driver: local
   ai_models_cache:
+    driver: local
+  ollama_data:
     driver: local
 
 networks:

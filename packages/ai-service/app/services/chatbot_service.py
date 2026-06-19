@@ -6,6 +6,7 @@ from .legal_research_service import LegalResearchService
 from .litigation_service import LitigationService
 from .document_automation_service import DocumentAutomationService
 from .ocr_pipeline import OCRPipeline
+from .qwen_service import QwenService
 
 logger = logging.getLogger(__name__)
 
@@ -22,34 +23,20 @@ class ChatbotService:
         self.litigation = LitigationService()
         self.doc_automation = DocumentAutomationService()
         self.ocr = OCRPipeline()
+        self.qwen_service = QwenService()
 
     async def process_query(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        Process a text query and return a structured response.
+        Process a text query using Qwen open source model to make the chat active.
         """
-        # Simple intent classification
-        query_lower = query.lower()
+        # Call Qwen directly for a natural, active chat response
+        qwen_response = await self.qwen_service.generate_chat_response(query, context)
         
-        if any(word in query_lower for word in ["predict", "outcome", "win", "lose", "settle"]):
-            return await self._handle_prediction_query(query, context)
-        elif any(word in query_lower for word in ["summarize", "summary", "details"]):
-            if "fun" in query_lower or "simplified" in query_lower:
-                return await self._handle_fun_summary_query(query, context)
-            else:
-                return await self._handle_summary_query(query, context)
-        elif any(word in query_lower for word in ["research", "precedent", "case law", "judgement"]):
-            return await self._handle_research_query(query, context)
-        elif any(word in query_lower for word in ["compliance", "legal", "rules", "regulations"]):
-            return await self._handle_compliance_query(query, context)
-        elif any(word in query_lower for word in ["profile", "judgement", "judgment", "pattern"]):
-            return await self._handle_judgement_profiling(query, context)
-        elif any(word in query_lower for word in ["litigation", "anticipate", "risk", "dispute"]):
-            return await self._handle_litigation_analysis_query(query, context)
-        elif any(word in query_lower for word in ["swahili", "kiswahili", "gist", "translate"]):
-            return await self._handle_swahili_gist_query(query, context)
-        else:
-            # General legal advice/guidance
-            return await self._handle_general_query(query, context)
+        return {
+            "intent": "active_chat",
+            "response": qwen_response,
+            "data": {"qwen_powered": True}
+        }
 
     async def analyze_file(self, file_content: str, file_type: str, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
         """
