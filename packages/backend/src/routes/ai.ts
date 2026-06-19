@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { chatbotQuery, analyzeChatbotFile } from '../services/aiValidationService';
+import { fetchEfilingCases } from '../services/efilingService';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -23,6 +24,19 @@ router.post('/chatbot/analyze-file', authenticateToken, async (req: AuthRequest,
   } catch (error) {
     console.error('File analysis route error:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.post('/chatbot/fetch-cases', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const cases = await fetchEfilingCases();
+    return res.status(200).json({
+      success: true,
+      cases
+    });
+  } catch (error) {
+    console.error('e-Filing fetch error:', error);
+    return res.status(500).json({ error: 'Failed to fetch cases from e-Filing system.' });
   }
 });
 

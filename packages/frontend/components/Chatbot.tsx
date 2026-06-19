@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, FileText, BarChart2, CheckCircle, TrendingUp, X, Maximize2, Minimize2, Paperclip as AttachmentIcon, Globe, Mic, Video, Image as ImageIcon } from 'lucide-react';
+import { Send, Paperclip, FileText, BarChart2, CheckCircle, TrendingUp, X, Maximize2, Minimize2, Paperclip as AttachmentIcon, Globe, Mic, Video, Image as ImageIcon, Briefcase } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 
 interface Message {
@@ -36,10 +36,11 @@ export default function Chatbot() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
+    const queryText = input.trim();
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input,
+      content: queryText,
       timestamp: new Date()
     };
 
@@ -47,8 +48,41 @@ export default function Chatbot() {
     setInput('');
     setIsTyping(true);
 
+    // Intercept e-Filing requests
+    if (queryText.toLowerCase().includes('fetch my cases') || queryText.toLowerCase() === 'fetch cases') {
+      try {
+        const response = await apiClient.post('/ai/chatbot/fetch-cases', {});
+        const data = response.data;
+        
+        let content = "I've successfully connected to the e-Filing system and retrieved your recent cases:\n\n";
+        data.cases.forEach((c: any) => {
+          content += `**${c.caseNumber}**: ${c.title} (${c.court}) - Status: **${c.status}** (Filed: ${c.dateFiled})\n`;
+        });
+
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: content,
+          timestamp: new Date(),
+          data: { efiling_sync: true }
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      } catch (error) {
+        console.error('e-Filing error:', error);
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "Sorry, I encountered an error connecting to the e-Filing system.",
+          timestamp: new Date()
+        }]);
+      } finally {
+        setIsTyping(false);
+      }
+      return;
+    }
+
     try {
-      const response = await apiClient.post('/ai/chatbot/query', { query: input });
+      const response = await apiClient.post('/ai/chatbot/query', { query: queryText });
       const data = response.data;
       
       const assistantMessage: Message = {
@@ -228,6 +262,16 @@ export default function Chatbot() {
           </button>
           <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors" title="Photos/OCR">
             <ImageIcon className="w-5 h-5" />
+          </button>
+          <button 
+            className="p-2 hover:bg-blue-100 rounded-lg text-blue-600 transition-colors" 
+            title="Fetch e-Filing Cases"
+            onClick={() => {
+              setInput('Fetch my cases');
+              // Optionally trigger send directly
+            }}
+          >
+            <Briefcase className="w-5 h-5" />
           </button>
           <input 
             type="file" 

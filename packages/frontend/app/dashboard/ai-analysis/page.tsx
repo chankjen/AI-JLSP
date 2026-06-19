@@ -1,10 +1,46 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Bot, Shield, FileSearch, Scale, BarChart, FileText, Share2, Printer } from 'lucide-react';
 import Chatbot from '@/components/Chatbot';
 
 export default function AIAnalysisPage() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'AI Case Analysis Report',
+          text: 'Check out this legal analysis report from AI-JLSP.',
+          url: window.location.href,
+        });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Link copied to clipboard!');
+      }
+    } catch (err) {
+      console.error('Error sharing:', err);
+    }
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // In a real app, upload the file
+      alert(`File selected: ${file.name}`);
+    }
+  };
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
       {/* Header Section */}
@@ -19,10 +55,16 @@ export default function AIAnalysisPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
+          <button 
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
+          >
             <Printer className="w-4 h-4" /> Export Report
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium shadow-md">
+          <button 
+            onClick={handleShare}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium shadow-md"
+          >
             <Share2 className="w-4 h-4" /> Share Findings
           </button>
         </div>
@@ -39,7 +81,10 @@ export default function AIAnalysisPage() {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer group">
+              <div 
+                onClick={triggerFileInput}
+                className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-start justify-between">
                   <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                     <FileText className="w-5 h-5" />
@@ -50,7 +95,10 @@ export default function AIAnalysisPage() {
                 <p className="text-xs text-gray-500 mt-1">Upload Pleadings, Affidavits, or Contracts for compliance check.</p>
               </div>
 
-              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-indigo-300 transition-colors cursor-pointer group">
+              <div 
+                onClick={triggerFileInput}
+                className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-indigo-300 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-start justify-between">
                   <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                     <BarChart className="w-5 h-5" />
@@ -61,7 +109,10 @@ export default function AIAnalysisPage() {
                 <p className="text-xs text-gray-500 mt-1">Analyze financial records, tax returns, or exhibit lists.</p>
               </div>
 
-              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-rose-300 transition-colors cursor-pointer group">
+              <div 
+                onClick={triggerFileInput}
+                className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-rose-300 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-start justify-between">
                   <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
                     <Shield className="w-5 h-5" />
@@ -72,7 +123,10 @@ export default function AIAnalysisPage() {
                 <p className="text-xs text-gray-500 mt-1">Verify signatures, seals, and chain of custody integrity.</p>
               </div>
 
-              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-emerald-300 transition-colors cursor-pointer group">
+              <div 
+                onClick={triggerFileInput}
+                className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-emerald-300 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-start justify-between">
                   <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                     <Scale className="w-5 h-5" />
@@ -84,7 +138,10 @@ export default function AIAnalysisPage() {
               </div>
             </div>
 
-            <div className="mt-8 p-6 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center space-y-4 hover:border-blue-400 transition-colors">
+            <div 
+              className="mt-8 p-6 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center space-y-4 hover:border-blue-400 transition-colors cursor-pointer"
+              onClick={triggerFileInput}
+            >
               <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                 <Bot className="w-6 h-6" />
               </div>
@@ -92,9 +149,19 @@ export default function AIAnalysisPage() {
                 <p className="text-gray-900 font-bold">Drop files here or click to upload</p>
                 <p className="text-xs text-gray-400 mt-1">PDF, CSV, MP3, MP4, JPEG, and Excel supported (Max 50MB)</p>
               </div>
-              <button className="px-6 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition shadow-lg">
+              <button 
+                onClick={(e) => { e.stopPropagation(); triggerFileInput(); }}
+                className="px-6 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition shadow-lg"
+              >
                 Browse Files
               </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                onChange={handleFileChange}
+                accept=".pdf,.csv,.xlsx,.xls,.txt,.png,.jpg,.jpeg,.mp3,.mp4"
+              />
             </div>
           </div>
 
